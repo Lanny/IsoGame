@@ -1,0 +1,25 @@
+To render a new map file from the ascii format:
+
+idu.py --convert-from-ascii-map maps/<asciimap_name_here>
+
+(renders into conversion_output.txt)
+(goes to /maps/)
+
+
+To render a converted map file visually:
+
+idu.py --render maps/<mapname_here>
+^Changed by lanny
+
+Also note :
+idu.py --convert-from-ascii-map -d maps/<asciimap_name_here>
+the -d flag will render the map as soon as it's been converted.
+
+
+
+Available blocks:
+Dirt
+PlaceHolder
+
+Available Entities:
+Rock
