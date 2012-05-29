@@ -102,7 +102,9 @@
 0, 0, 1:Air
 0, 1, 1:Air
 0, 2, 1:TallGrass1
-0, 3, 1:Air
+5, 5, 1:SpriteTest
+5, 4, 1:SpriteTest
+5, 6, 1:SpriteTest
 0, 4, 1:Air
 0, 5, 1:Air
 0, 6, 1:Air

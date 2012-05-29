@@ -45,10 +45,26 @@ class Actor(pygame.sprite.Sprite, Block) :
         # Defining a default location on screen for our sprite
         self.location = (0,0)
 
+    def walkChain(self, chain, gameGrid) :
+        self._walkingChain = chain[1:]
+        self._gameGrid = gameGrid
+        self.walk(chain[0], gameGrid)
+
+    def walkNext(self, gameGrid) :
+        try : 
+            if self._walkingChain == [] : return
+        except AttributeError : 
+            return
+
+        direction = self._walkingChain[0]
+        self._walkingChain = self._walkingChain[1:]
+        self.walk(direction, gameGrid)
+
     def walk(self, direction, gameGrid) :
         if self._acting :
             return
 
+        # Direction is going to look like "NWU" so just take the first two chars
         self._facing = direction[:2]
 
         self._acting = True
@@ -57,6 +73,9 @@ class Actor(pygame.sprite.Sprite, Block) :
         self._xChange = 23 / self._fps
         self._yChange = 10 / self._fps
         self._newLoc = list(self.gridLocation)
+
+        # Animate the motion
+        self.setGraphicState('walking-%s' % self._facing)
 
         # The global game grid. This feels wrong but I don't know how else to do
         # it.
@@ -87,11 +106,11 @@ class Actor(pygame.sprite.Sprite, Block) :
             self._newLoc[2] -= 1
 
         # Make sure move is valid
-        if tuple(self._newLoc) not in self._gameGrid.getValidMovement(self.gridLocation[0], self.gridLocation[1], self.gridLocation[2]) :
-            print 'Invalid move! Alert! Alert!'
-            self._walkingFrames = 0
-            self._acting = False
-            return
+        #if tuple(self._newLoc) not in self._gameGrid.getValidMovement(self.gridLocation[0], self.gridLocation[1], self.gridLocation[2]) :
+        #    print 'Invalid move! Alert! Alert!'
+        #    self._walkingFrames = 0
+        #    self._acting = False
+        #    return
 
         for block in self._gameGrid.getBlock(self._newLoc[0], self._newLoc[1], self._newLoc[2]) :
             if block.isSolid() :
@@ -116,8 +135,8 @@ class Actor(pygame.sprite.Sprite, Block) :
                     self.x_offset -= self._xChange * self._fps
                     self.y_offset -= self._yChange * self._fps
 
-                    self._gameGrid.setBlock(self._newLoc[0], self._newLoc[1], self._newLoc[2], self)
-                    self._gameGrid.setBlock(self.gridLocation[0], self.gridLocation[1], self.gridLocation[2], Air())
+                    self._gameGrid.setBlock(self._newLoc[0], self._newLoc[1], self._newLoc[2], self, ow=False, insPos=0)
+                    self._gameGrid.removeBlock(self.gridLocation[0], self.gridLocation[1], self.gridLocation[2], self)
                     self.gridLocation = tuple(self._newLoc)
 
                     # Set graphic state back to standing
@@ -125,6 +144,8 @@ class Actor(pygame.sprite.Sprite, Block) :
 
                     # Set acting to false to allow further commands
                     self._acting = False
+
+                    self.walkNext(self._gameGrid)
 
             # End walking code, start normal animation code
             self._frame += 1
@@ -177,4 +198,4 @@ class actorTest(Actor) :
         Actor.__init__(self,
                        gDict,
                        state = 'standing-SW',
-                       fps = 7)
+                       fps = 10)

@@ -3,9 +3,11 @@
 # Untitled isometric game core module
 # Copyright(c) 2012 Lan "Lanny" Rogers
 
-import pygame, re
+import pygame, re, pdb
 import blocks, actors, UIhandlers
 from pygame.locals import *
+
+DEV_MODE = True
 
 class gameGridException(Exception) :
     pass
@@ -40,14 +42,18 @@ class gameGrid(object) :
         if len(self.block_map[x][y][z]) < 1 :
             self.block_map[x][y][z].append(blocks.Air())
 
-    def getBlock(self, x, y, z) :
+    def getBlock(self, x, y=None, z=None) :
         '''Returns a list of objects present in a given cell. May be more than one'''
+        # We can also take a tuple
+        if not y and not z and type(x) == tuple :
+            x, y, z = x
+
         return self.block_map[x][y][z]
 
     def getDims(self) :
         return (len(self.block_map), len(self.block_map[-1]), len(self.block_map[-1][-1]))
 
-    def getValidMovement(self, x, y, z) :
+    '''def getValidMovement(self, x, y, z) :
         # All possible orthagonal moves
         validMoves = [(x, y+1, z-1),
                       (x, y-1, z-1),
@@ -58,7 +64,7 @@ class gameGrid(object) :
                       (x+1, y, z),
                       (x-1, y, z),
                       (x, y+1, z+1),
-                      (x, y+1, z+1),
+                      (x, y-1, z+1),
                       (x+1, y, z+1),
                       (x-1, y, z+1)]
 
@@ -79,6 +85,7 @@ class gameGrid(object) :
 
         # And hand us back the result
         return validMoves
+        '''
 
 def drawMap(grid, surface, flip=True) :
     '''Redraw every item in the a gamegrid to the surface provided. If flip is
@@ -123,7 +130,6 @@ def drawMap(grid, surface, flip=True) :
 
     if flip :
         pygame.display.update()
-        print 'updated'
 
     return
 
@@ -144,13 +150,19 @@ def loadMap(map_to_load) :
             # Try to set a block. If fails assume an actor
             try :
                 returnGrid.setBlock(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)), eval('blocks.' + reObj.group(4) + '()'), ow=False)
+                x = returnGrid.getBlock(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)))
+
+                for block in x :
+                    if isinstance(block, pygame.sprite.Sprite) :
+                        global spriteList
+                        spriteList.append(block)
 
             # If neither raise AttributeError as usual
             except AttributeError :
                 returnGrid.setBlock(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)), eval('actors.' + reObj.group(4) + '()'), ow=False)
 
+            # Redundancy here?
             if isinstance(returnGrid.getBlock(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)))[-1], pygame.sprite.Sprite) :
-                print 'here'
                 returnGrid.getBlock(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)))[-1].setGridLoc(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)))
 
             # If it's a sprite we add it to the sprite list to be re-rendered as needed
@@ -195,6 +207,10 @@ if __name__ == '__main__' :
     # place. Keep an eye on it.
     currentUIHandler = UIhandlers.initialize()
 
+    # Dev font
+    font = pygame.font.Font(None, 16)
+    lastTime = 0
+
     # Primary event loop. The important stuff goes on here.
     while running:
         # Get our event. Prosessing one at a time because of the nature of our game,
@@ -223,9 +239,20 @@ if __name__ == '__main__' :
         # Blit the entire game-grid here
         drawMap(myGrid, screen, flip=False)
 
+        # Dev mode shit
+        if DEV_MODE :
+            # Render the cursor location, not always applicable
+            screen.blit(font.render("Cursor Loc: %s" % currentUIHandler.get().get_loc(), False, (0,0,255)), (5,5))
+
+            # Calculate FPS
+            FPS = 1000/(pygame.time.get_ticks() - lastTime)
+            lastTime = pygame.time.get_ticks()
+            screen.blit(font.render("FPS: %s" % FPS, False, (0,0,255)), (5,15))
+
+
         # This is where we will handle UI updating when we actually have UI. For
         # now all we have is this comment
 
         # And finally update everything added to updateRects that needs to be
         # drawn to the screen
-        pygame.display.update(updateRects)
+        pygame.display.update()#updateRects)

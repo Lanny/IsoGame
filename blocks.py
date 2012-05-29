@@ -119,6 +119,7 @@ class FencerTest(AnimatedBlock) :
 
 class selectArrow(AnimatedBlock) :
     name = 'SelectArrow'
+    solid = False
 
     def __init__(self) :
         AnimatedBlock.__init__(self,

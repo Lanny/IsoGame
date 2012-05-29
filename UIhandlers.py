@@ -1,6 +1,7 @@
 import pygame
 from pygame.locals import *
 import blocks
+import pathfinder
 
 # Change this to alter the control scheme
 ORIENTATION = 'NW'
@@ -27,6 +28,9 @@ class uiHandler() :
 
         except KeyError :
             pass
+
+    def get_loc(self) :
+        return 'N\\A'
 
 class testControlHandler(uiHandler) :
     def __init__(self, screen, gameGrid, actor) :
@@ -82,22 +86,6 @@ class testControlHandler(uiHandler) :
 
         self._actor.setGraphicState('walking-SW')
         self._actor.walk('SWD', self.gameGrid)
-
-class walkToPointHandler(uiHandler) :
-    def __init__(self, gameGrid, actor) :
-        self.gameGrid = gameGrid
-        self.actor = actor
-
-        x,y,z = actor.gridLocation
-        global currentUIHandler
-        currentUIHandler = refrence(tileSelectionHandler(x, y, z, self.startWalk))
-
-    def startWalk(self) :
-        print 'Haha, I am using the INTERNET!'
-
-def walkToPoint(gameGrid, actor) :
-    x, y, z = actor.gridLocation
-    global currentUIHandler
 
 class tileSelectionHandler(uiHandler) :
     def __init__(self, sx, sy, sz, callback=None) :
@@ -177,9 +165,30 @@ class tileSelectionHandler(uiHandler) :
         else :
             return
 
+    def get_loc(self) :
+        # Just some testing code called form the main loop
+        return '(%d,%d,%d)' % (self.x, self.y, self.z)
+
+class walkToPointHandler(tileSelectionHandler) :
+    def __init__(self, gameGrid, actor) :
+        self.gameGrid = gameGrid
+        self._actor = actor
+
+        x,y,z = actor.gridLocation
+
+        tileSelectionHandler.__init__(self, x, y, z)
+
+        self.callback = self.startWalk
+
+    def startWalk(self, endLoc) :
+        import pathfinder
+        walkingPath = pathfinder.aStar(self.gameGrid, self._actor.gridLocation, endLoc).getDirections()
+        self._actor.walkChain(walkingPath, self.gameGrid)
+        return
+
 def initialize() :
     global currentUIHandler
-    currentUIHandler = refrence(None)
-    walkToPointHandler(coreVars['gameGrid'], coreVars['actorList'][-1]))
+    currentUIHandler = refrence(walkToPointHandler(coreVars['gameGrid'], coreVars['actorList'][-1]))
+    #currentUIHandler = refrence(testControlHandler(coreVars['screen'], coreVars['gameGrid'], coreVars['actorList'][-1]))
 
     return currentUIHandler
