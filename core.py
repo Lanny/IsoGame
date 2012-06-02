@@ -3,11 +3,14 @@
 # Untitled isometric game core module
 # Copyright(c) 2012 Lan "Lanny" Rogers
 
-import pygame, re, pdb
+import pygame, re, time, pdb
 import blocks, actors, UIhandlers
 from pygame.locals import *
 
 DEV_MODE = True
+
+# Set to 0 to disable framelimiting
+FRAME_LIMIT = 24
 
 class gameGridException(Exception) :
     pass
@@ -211,8 +214,13 @@ if __name__ == '__main__' :
             screen.blit(font.render("Cursor Loc: %s" % currentUIHandler.get().get_loc(), False, (0,0,255)), (5,5))
 
             # Calculate FPS
-            FPS = 1000/(pygame.time.get_ticks() - lastTime)
+            ticks = pygame.time.get_ticks() - lastTime
+            FPS = 1000/ticks
             lastTime = pygame.time.get_ticks()
+            if FPS > FRAME_LIMIT and FRAME_LIMIT :
+                # We're rendering too many frames, cut back.
+                time.sleep((1.0/FRAME_LIMIT)-(ticks/10000.0))
+
             screen.blit(font.render("FPS: %s" % FPS, False, (0,0,255)), (5,15))
 
         # This is where we will handle UI updating when we actually have UI. For
