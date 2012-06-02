@@ -53,40 +53,6 @@ class gameGrid(object) :
     def getDims(self) :
         return (len(self.block_map), len(self.block_map[-1]), len(self.block_map[-1][-1]))
 
-    '''def getValidMovement(self, x, y, z) :
-        # All possible orthagonal moves
-        validMoves = [(x, y+1, z-1),
-                      (x, y-1, z-1),
-                      (x+1, y, z-1),
-                      (x-1, y, z-1),
-                      (x, y+1, z),
-                      (x, y-1, z),
-                      (x+1, y, z),
-                      (x-1, y, z),
-                      (x, y+1, z+1),
-                      (x, y-1, z+1),
-                      (x+1, y, z+1),
-                      (x-1, y, z+1)]
-
-        for move in validMoves :
-            # Get rid of the ones that aren't valid. We use the try/except clause
-            # in case we overrun a list.
-            try :
-                # Test if there is a solid entity in the way of possible move
-                if True in [i.isSolid() for i in self.getBlock(move[0], move[1], move[2])] :
-                    validMoves.remove(move)
-
-                # Is there a solid block under the proposed move?
-                elif True not in [i.isSolid() for i in self.getBlock(move[0], move[1], move[2]-1)] :
-                    validMoves.remove(move)
-
-            except IndexError :
-                validMoves.remove(move)
-
-        # And hand us back the result
-        return validMoves
-        '''
-
 def drawMap(grid, surface, flip=True) :
     '''Redraw every item in the a gamegrid to the surface provided. If flip is
     false, won't refresh when done'''
@@ -126,7 +92,7 @@ def drawMap(grid, surface, flip=True) :
         # Shift our block up (coords is taken _from_ the top)
         x_coord = dims[0] * 23
         y_coord = dims[2] * 29
-        y_coord -= 28 * (vert_slice + 1)
+        y_coord -= 10 * (vert_slice + 1)
 
     if flip :
         pygame.display.update()
@@ -248,7 +214,6 @@ if __name__ == '__main__' :
             FPS = 1000/(pygame.time.get_ticks() - lastTime)
             lastTime = pygame.time.get_ticks()
             screen.blit(font.render("FPS: %s" % FPS, False, (0,0,255)), (5,15))
-
 
         # This is where we will handle UI updating when we actually have UI. For
         # now all we have is this comment

@@ -1,5 +1,4 @@
 import pygame
-x=1
 
 def load_sliced_sprites(w, h, filename):
     '''
@@ -29,6 +28,25 @@ class Block(object) :
     def isSolid(self) :
         return self.solid
 
+class newStyleBlock(object) :
+    '''I must have been smoking something good when I wrote the last block class :\\'''
+    def __init__(self, img) :
+        self.solid = True
+        self.supporter = False
+
+        self.img = pygame.image.load(img)
+        self.x_offset,self.y_offset = self.img.get_size()
+
+        # Try to divine our offsets, probably gets overwritten
+        self.x_offset = 0-((self.x_offset - 47)/2)
+        self.y_offset = 0-(self.y_offset - 30)
+
+    def get_img(self) :
+        return self.img
+
+    def isSolid(self) :
+        return self.solid
+
 class AnimatedBlock(pygame.sprite.Sprite, Block) :
     '''Basically a ripoff of this guy's work :
     http://shinylittlething.com/2009/07/22/pygame-and-animated-sprites-take-2/'''
@@ -43,6 +61,14 @@ class AnimatedBlock(pygame.sprite.Sprite, Block) :
         self._last_update = 0
         self._frame	= 0
         self.image = self._images[self._frame]
+
+        # Offset magic. I guessed :o
+        self.x_offset,self.y_offset = self._images[0].get_size()
+
+        self.x_offset = 0-((self.x_offset - 47)/2)
+        self.y_offset = 0-(self.y_offset - 29)
+
+
         # Defining a default location on screen for our sprite
         self.location = (0,0)
         
@@ -78,10 +104,17 @@ class Air(Block) :
     def get_img(self) :
         return None
 
-class Dirt(Block) :
+class Dirt(newStyleBlock) :
     name = 'Dirt'
-    def get_img(self) :
-        return pygame.image.load('assets/blocks/grass_and_dirt.png')
+
+    def __init__(self) :
+        newStyleBlock.__init__(self, 'assets/blocks/grass_and_dirt.png')
+
+class Tree1(newStyleBlock) :
+    name = 'Tree'
+
+    def __init__(self) :
+        newStyleBlock.__init__(self, 'assets/blocks/tree_1.png')
 
 class Rock1(Block) :
     name = 'Rock1'
@@ -98,6 +131,7 @@ class PlaceHolder(Block) :
     name = 'PlaceHolder'
     def get_img(self) :
         return pygame.image.load('assets/blocks/placeholder.png')
+
 
 class SpriteTest(AnimatedBlock) :
     def __init__(self) :
@@ -120,13 +154,15 @@ class FencerTest(AnimatedBlock) :
 class selectArrow(AnimatedBlock) :
     name = 'SelectArrow'
     solid = False
+    y_offset = -18
 
     def __init__(self) :
+        self.image = pygame.image.load('assets/UI/arrow.png')
+
         AnimatedBlock.__init__(self,
-                               [0,0],
+                               [self.image],
                                fps = 10)
 
-        self.image = pygame.image.load('assets/UI/arrow.png')
 
     def get_img(self) :
         return self.image

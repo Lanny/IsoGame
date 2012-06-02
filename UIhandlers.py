@@ -98,7 +98,8 @@ class tileSelectionHandler(uiHandler) :
                   K_UP : self.UP,
                   K_LEFT : self.LEFT,
                   K_RIGHT : self.RIGHT,
-                  K_RETURN : self.RETURN}
+                  K_RETURN : self.RETURN,
+                  K_SPACE : self.space}
 
         uiHandler.__init__(self, coreVars['screen'], coreVars['gameGrid'], myDict)
 
@@ -106,6 +107,9 @@ class tileSelectionHandler(uiHandler) :
         self.gameGrid.setBlock(sx, sy, sz, self._arrow, ow=False)
         self._arrow.setUpdateFlag()
         coreVars['spriteList'].append(self._arrow)
+
+    def space(self) :
+        self._actor.meleeAttack('SW', self.gameGrid)
 
     def DOWN(self) :
         # Remove the old arrow
@@ -185,6 +189,9 @@ class walkToPointHandler(tileSelectionHandler) :
         walkingPath = pathfinder.aStar(self.gameGrid, self._actor.gridLocation, endLoc).getDirections()
         self._actor.walkChain(walkingPath, self.gameGrid)
         return
+
+class gameControlHandler(uiHandler) :
+    pass
 
 def initialize() :
     global currentUIHandler

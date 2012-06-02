@@ -16,16 +16,51 @@ def load_sliced_sprites(w, h, filename):
     	images.append(master_image.subsurface((i*w,0,w,h)))
     return images
 
+def directionToCoord(direction, x, y=None, z=None) :
+    if not y and not z and type(x) == tuple :
+        x,y,z = x
+
+    if direction == 'NW' : y -= 1
+    elif direction == 'SW' : x += 1
+    elif direction == 'NE' : x -= 1
+    elif direction == 'SE' : y += 1
+
+    return (x, y, z)
+
+def coordToDirection(sx, sy, sz=None, ex=None, ey=None, ez=None) :
+    '''Convert two adjacent locations to a direction, behaviour becomes erratic if locations are not adjacent.'''
+    if None in (sz,ex,ey,ez) and type(sx) == tuple and type(sy) == tuple :
+        sx,sy,sz = sx
+        ex,ey,ez = sy
+
+    retVal = ''
+    if sx < ex : retVal = 'SW'
+    elif sx > ex : retVal = 'NE'
+    elif sy < ey : retVal = 'SE'
+    elif sy > ey : retVal = 'SW'
+
+    # Up/Down
+    if sz > ez : retVal += 'D'
+    elif sz < ez : retVal += 'U'
+
 class Actor(pygame.sprite.Sprite, Block) :
     '''All actors should extend this class.
     Basically an actor is an NPC or a player controlled character.'''
     def __init__(self, graphicDict, state = 'standing', fps = 10):
         pygame.sprite.Sprite.__init__(self)
+        # Our graphic state
         self._state = state
+
+        # Our selection of animations
         self._graphicDict = graphicDict
         self._images = self._graphicDict[state]
+
+        # Is the actor currently doing something?
         self._acting = False
+
+        # When 0, do whatever, otherwise act out remaining frames
         self._walkingFrames = 0
+        self._actingFrames = 0
 
         # Store this, we may need it
         self._fps = fps
@@ -33,7 +68,7 @@ class Actor(pygame.sprite.Sprite, Block) :
         # Our sprite offsets. Used for rendering non 47x47 sprites, or moving any
         # sprite on the screen.
         self.x_offset = 7
-        self.y_offset = -11
+        self.y_offset = -13
 
         # Track the time we started, and the time between updates.
         # Then we can figure out when we have to switch the image.
@@ -44,6 +79,15 @@ class Actor(pygame.sprite.Sprite, Block) :
         self.image = self._images[self._frame]
         # Defining a default location on screen for our sprite
         self.location = (0,0)
+
+    def meleeAttack(self, direction, gameGrid) :
+        if self._acting == True : return
+        else : self._acting = True
+
+        self._facing = direction[:2]
+        self._actingFrames = 4
+
+        self.setGraphicState('attacking-%s' % self._facing)
 
     def walkChain(self, chain, gameGrid) :
         self._walkingChain = chain[1:]
@@ -147,6 +191,14 @@ class Actor(pygame.sprite.Sprite, Block) :
 
                     self.walkNext(self._gameGrid)
 
+            # General acting code
+            if self._actingFrames :
+                self._actingFrames -= 1
+
+                if not self._actingFrames :
+                    self.setGraphicState('standing-%s' % self._facing)
+                    self._acting = False
+
             # End walking code, start normal animation code
             self._frame += 1
 
@@ -183,9 +235,6 @@ class Actor(pygame.sprite.Sprite, Block) :
 
 class actorTest(Actor) :
     def __init__(self) :
-        self.x_offset = 7
-        self.y_offset = -11
-
         gDict = {'walking-SW' : load_sliced_sprites(32, 58, 'assets/actors/test_sprite/walk_cycle_front.png'),
                  'walking-SE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(32, 58, 'assets/actors/test_sprite/walk_cycle_front.png')],
                  'walking-NW' : load_sliced_sprites(32, 58, 'assets/actors/test_sprite/walk_cycle_back.png'),
@@ -193,9 +242,14 @@ class actorTest(Actor) :
                  'standing-SW' : [pygame.image.load('assets/actors/test_sprite/standing-SW.png')],
                  'standing-SE' : [pygame.transform.flip(pygame.image.load('assets/actors/test_sprite/standing-SW.png'), True, False)] ,
                  'standing-NW' : [pygame.image.load('assets/actors/test_sprite/standing-NW.png')],
-                 'standing-NE' : [pygame.transform.flip(pygame.image.load('assets/actors/test_sprite/standing-NW.png'), True, False)] }
+                 'standing-NE' : [pygame.transform.flip(pygame.image.load('assets/actors/test_sprite/standing-NW.png'), True, False)],
+                 'attacking-SW' : load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_front.png')
+                }
 
         Actor.__init__(self,
                        gDict,
                        state = 'standing-SW',
                        fps = 10)
+
+        self.x_offset = 7
+        self.y_offset = -29
