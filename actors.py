@@ -110,6 +110,7 @@ class Actor(pygame.sprite.Sprite, Block) :
 
         # Direction is going to look like "NWU" so just take the first two chars
         self._facing = direction[:2]
+        print self._facing
 
         self._acting = True
         self._walkingFrames = self._fps
@@ -243,7 +244,10 @@ class actorTest(Actor) :
                  'standing-SE' : [pygame.transform.flip(pygame.image.load('assets/actors/test_sprite/standing-SW.png'), True, False)] ,
                  'standing-NW' : [pygame.image.load('assets/actors/test_sprite/standing-NW.png')],
                  'standing-NE' : [pygame.transform.flip(pygame.image.load('assets/actors/test_sprite/standing-NW.png'), True, False)],
-                 'attacking-SW' : load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_front.png')
+                 'attacking-SW' : load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_front.png'),
+                 'attacking-SE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_front.png')],
+                 'attacking-NW' : load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_back.png'),
+                 'attacking-NE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_back.png')]
                 }
 
         Actor.__init__(self,
