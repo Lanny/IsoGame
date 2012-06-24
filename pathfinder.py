@@ -45,13 +45,11 @@ class Path() :
         return self.closedList[-1]
 
     def getDirections(self) :
-        print [str(i) for i in self.closedList]
         directionList = []
 
         lastPoint = self.closedList[0].getTuple()
         for point in self.getPath()[1:] :
             point = point.getTuple()
-            print point, ':', lastPoint
             nextDir = ''
             if point[0] - lastPoint[0] == -1 :
                 nextDir = 'NE'
@@ -84,8 +82,10 @@ class Path() :
         else :
             self.closedList.append(node)
 
-def getValidMovement(grid, loc) :
+def getValidMovement(grid, loc, solidNonSupporterValid=False) :
     '''Get all valid orthagonal moves over a given grid for a given location'''
+    # If solidNonSuporterValid is set then spaces that with a solid object 
+    # that is an actor are allowed.
     
     # Unpack loc
     x = loc.x
@@ -118,14 +118,18 @@ def getValidMovement(grid, loc) :
         
         try :
             # Test if there is a solid entity in the way of possible move
-            if True in [i.isSolid() for i in grid.getBlock(move)] :
+            if not solidNonSupporterValid :
+                k = [i.isSolid() for i in grid.getBlock(move)]
+            else :
+                k = [i.isSupporter() for i in grid.getBlock(move)]
+                
+            if True in k :
                 valid = False
 
-
-            # Is there a solid block under the proposed move?
+            # Is there a supporter block under the proposed move?
             else :
                 try :
-                    if True not in [i.isSolid() for i in grid.getBlock(move[0], move[1], move[2]-1)] :
+                    if True not in [i.isSupporter() for i in grid.getBlock(move[0], move[1], move[2]-1)] :
                         valid = False
                 except IndexError :
                     valid = False
@@ -165,7 +169,6 @@ def aStar(gameGrid, startLoc, endLoc) :
 
             # And finally package it in a Path object to be returned
             myPath.closedList = path
-            print myPath.getDirections()
             return myPath
 
         neighbors = [Node(neighbor, endLoc, parent=currNode) for neighbor in getValidMovement(gameGrid, currNode)]

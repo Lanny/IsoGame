@@ -7,6 +7,10 @@ import pygame, re, time, pdb
 import blocks, actors, UIhandlers
 from pygame.locals import *
 
+# Py2exe complains if we don't do this. Magic!
+import pygame._view
+
+# Framerates and cursor locations
 DEV_MODE = True
 
 # Set to 0 to disable framelimiting
@@ -16,8 +20,11 @@ class gameGridException(Exception) :
     pass
 
 class gameGrid(object) :
-    def __init__(self, x, y, z) :
+    def __init__(self, x, y=None, z=None) :
         '''Create a game grid of x by y by z dimentions'''
+        if not y and not z and isinstance(x, tuple) :
+            x,y,z = x
+
         self.block_map = []
 
         for x_row in range(x) :
@@ -29,16 +36,28 @@ class gameGrid(object) :
 
         return
 
-    def setBlock(self, x, y, z, block, ow=True, insPos=-1) :
+    def setBlock(self, x, y, z, block, ow=True, insPos=None) :
         '''Set a particular location to a particular block or sprite'''
         if ow :
             self.block_map[x][y][z] = [block]
 
-        else :
+        elif insPos :
             self.block_map[x][y][z].insert(insPos, block)
 
-    def removeBlock(self, x, y, z, block) :
+        else :
+            self.block_map[x][y][z].append(block)
+
+        if isinstance(block, pygame.sprite.Sprite) :
+            self._spriteList.append(block)
+
+        if isinstance(block, actors.Actor) :
+            self._actorList.append(block)
+
+    def removeBlock(self, block, x, y=None, z=None) :
         '''Remove a block from a cell-contents list'''
+        if isinstance(x, tuple) and not y and not z :
+            x,y,z = x
+
         self.block_map[x][y][z].remove(block) 
 
         # If cell is left empty, throw an air block in there
@@ -95,7 +114,7 @@ def drawMap(grid, surface, flip=True) :
         # Shift our block up (coords is taken _from_ the top)
         x_coord = dims[0] * 23
         y_coord = dims[2] * 29
-        y_coord -= 10 * (vert_slice + 1)
+        y_coord -= 11 * (vert_slice + 1)
 
     if flip :
         pygame.display.update()
@@ -107,7 +126,7 @@ def loadMap(map_to_load) :
     mapFile = open(map_to_load)
 
     reObj = re.match(r'(\d+), *(\d+), *(\d+)', mapFile.readline())
-    returnGrid = gameGrid(int(reObj.group(1)), int(reObj.group(2)), int(reObj.group(3)))
+    returnGrid = gameGrid(tuple(int(i) for i in reObj.groups()))
 
     for line in mapFile.readlines() :
         if line[0] == '#' :
@@ -141,18 +160,35 @@ def loadMap(map_to_load) :
 
     return returnGrid
 
+def addActor(actor, grid, loc, initAdd=False) :
+  '''Add an actor to the game'''
+  x,y,z = loc
+
+  grid.setBlock(x, y, z, actor())
+  tmp = grid.getBlock(x,y,z)[-1]
+  tmp.setGridLoc(x,y,z)
+  spriteList.append(tmp)
+  actorList.append(tmp)
+
+  if initAdd : initList.append(tmp)
+
 if __name__ == '__main__' :
     # Sprite list is defined before a map is loaded, because during map loading
     # is when the sprite list is built up
     actorList = []
     spriteList = []
+    initList = []
     myGrid = loadMap('maps/lanny_test_map1.txt')
 
+    # Post declariation attribute assignment, fucking aweful >:(
+    myGrid._actorList = actorList
+    myGrid._spriteList = spriteList
+    myGrid._initList = initList
+
     # This is some lame test code. Should find a better way, but w/e.
-    myGrid.setBlock(8,4,1, actors.actorTest())
-    myGrid.getBlock(8,4,1)[-1].setGridLoc(8,4,1)
-    spriteList.append(myGrid.getBlock(8,4,1)[-1])
-    actorList.append(myGrid.getBlock(8,4,1)[-1])
+    addActor(actors.breakablePlant, myGrid, (8,2,1))
+    addActor(actors.testHound, myGrid, (8,4,1), True)
+    addActor(actors.actorTest, myGrid, (9,4,1), True)
 
     # Pygame ceremony.
     pygame.init()
@@ -170,7 +206,8 @@ if __name__ == '__main__' :
     UIhandlers.coreVars = {'gameGrid' : myGrid,
                            'screen' : screen,
                            'actorList' : actorList ,
-                           'spriteList' : spriteList}
+                           'spriteList' : spriteList,
+                           'initList' : initList}
 
     # Create our UI handler. This is where the UI rendering and control takes
     # place. Keep an eye on it.
@@ -208,6 +245,13 @@ if __name__ == '__main__' :
         # Blit the entire game-grid here
         drawMap(myGrid, screen, flip=False)
 
+        # Get any UI elements from the UI Handler
+        uiSurface = currentUIHandler.get().getUI()
+        if uiSurface :
+            for pair in uiSurface :
+              surface, loc = pair
+              screen.blit(surface, loc)
+
         # Dev mode shit
         if DEV_MODE :
             # Render the cursor location, not always applicable
@@ -217,6 +261,7 @@ if __name__ == '__main__' :
             ticks = pygame.time.get_ticks() - lastTime
             FPS = 1000/ticks
             lastTime = pygame.time.get_ticks()
+
             if FPS > FRAME_LIMIT and FRAME_LIMIT :
                 # We're rendering too many frames, cut back.
                 time.sleep((1.0/FRAME_LIMIT)-(ticks/10000.0))

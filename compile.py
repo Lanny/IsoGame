@@ -21,7 +21,7 @@ except ImportError, message:
 origIsSystemDLL = py2exe.build_exe.isSystemDLL # save the orginal before we edit it
 def isSystemDLL(pathname):
     # checks if the freetype and ogg dll files are being included
-    if os.path.basename(pathname).lower() in ("libfreetype-6.dll", "libogg-0.dll"):
+    if os.path.basename(pathname).lower() in ("libfreetype-6.dll", "libogg-0.dll", "sdl_ttf.dll"):
             return 0
     return origIsSystemDLL(pathname) # return the orginal function
 py2exe.build_exe.isSystemDLL = isSystemDLL # override the default function with this one
@@ -45,7 +45,7 @@ class BuildExe:
         self.project_name = "UntitledIsoProject"
  
         #Project url
-        self.project_url = "about:none"
+        self.project_url = "https://github.com/lannafred/IsoGame"
  
         #Version of program
         self.project_version = "0.1"
@@ -59,13 +59,13 @@ class BuildExe:
         self.copyright = "Copyright (c) 2012 Lan \"Lanny\" Rogers"
  
         #Description
-        self.project_description = "The very beginnings of an isometric rendering engine."
+        self.project_description = "An isometric game in the spirit of FF:Tactics and Co."
  
         #Icon file (None will use pygame default icon)
         self.icon_file = None
  
         #Extra files/dirs copied to game
-        self.extra_datas = []
+        self.extra_datas = ['assets', 'maps']
  
         #Extra/excludes python modules
         self.extra_modules = []

@@ -22,17 +22,21 @@ class Block(object) :
 
     # Determine if actors can normally move through this kind of block
     solid = True
+    supporter = True
     def __init__(self) :
         pass
 
     def isSolid(self) :
         return self.solid
 
+    def isSupporter(self) :
+        return self.supporter
+
 class newStyleBlock(object) :
-    '''I must have been smoking something good when I wrote the last block class :\\'''
+    '''I must have been smoking something good when I wrote the last block class :/'''
     def __init__(self, img) :
         self.solid = True
-        self.supporter = False
+        self.supporter = True
 
         self.img = pygame.image.load(img)
         self.x_offset,self.y_offset = self.img.get_size()
@@ -46,6 +50,9 @@ class newStyleBlock(object) :
 
     def isSolid(self) :
         return self.solid
+
+    def isSupporter(self) :
+        return self.supporter
 
 class AnimatedBlock(pygame.sprite.Sprite, Block) :
     '''Basically a ripoff of this guy's work :
@@ -67,7 +74,6 @@ class AnimatedBlock(pygame.sprite.Sprite, Block) :
 
         self.x_offset = 0-((self.x_offset - 47)/2)
         self.y_offset = 0-(self.y_offset - 29)
-
 
         # Defining a default location on screen for our sprite
         self.location = (0,0)
@@ -101,6 +107,7 @@ class AnimatedBlock(pygame.sprite.Sprite, Block) :
 class Air(Block) :
     name = 'Air'
     solid = False
+    supporter = False
     def get_img(self) :
         return None
 
@@ -132,7 +139,6 @@ class PlaceHolder(Block) :
     def get_img(self) :
         return pygame.image.load('assets/blocks/placeholder.png')
 
-
 class SpriteTest(AnimatedBlock) :
     def __init__(self) :
         AnimatedBlock.__init__(self, 
@@ -151,10 +157,35 @@ class FencerTest(AnimatedBlock) :
 
         return
 
+class DamageIndicator(AnimatedBlock) :
+    def __init__(self, damage, loc, gameGrid) :
+        img = pygame.font.Font(None, 16).render(str(damage), False, (255, 0, 0), (255,255,255))
+        AnimatedBlock.__init__(self,
+                               [img],
+                               fps=20)
+        self.y_offset = 0
+        self._gameGrid = gameGrid
+        self._loc = loc
+        self._alive = True
+
+    # Gotta do a custom update since we don't have sprites
+    def update(self, t):
+        if t - self._last_update > self._delay and self._alive :
+            self.y_offset -= 2
+
+            # Enough floating, let's get on with it.
+            if self.y_offset < -40 :
+                self._alive = False
+                self._gameGrid.removeBlock(self, self._loc)
+
+            self._last_update = t
+
+            return pygame.Rect(self.location, self.image.get_size())
+    solid = True
+
 class selectArrow(AnimatedBlock) :
     name = 'SelectArrow'
     solid = False
-    y_offset = -18
 
     def __init__(self) :
         self.image = pygame.image.load('assets/UI/arrow.png')
@@ -162,7 +193,7 @@ class selectArrow(AnimatedBlock) :
         AnimatedBlock.__init__(self,
                                [self.image],
                                fps = 10)
-
+        self.y_offset = -17
 
     def get_img(self) :
         return self.image

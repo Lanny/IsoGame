@@ -1,5 +1,6 @@
-import pygame
-from blocks import Block, Air
+import pygame, random
+import weapons
+from blocks import Block, Air, DamageIndicator
 
 def load_sliced_sprites(w, h, filename):
     '''
@@ -30,18 +31,20 @@ def directionToCoord(direction, x, y=None, z=None) :
 def coordToDirection(sx, sy, sz=None, ex=None, ey=None, ez=None) :
     '''Convert two adjacent locations to a direction, behaviour becomes erratic if locations are not adjacent.'''
     if None in (sz,ex,ey,ez) and type(sx) == tuple and type(sy) == tuple :
-        sx,sy,sz = sx
         ex,ey,ez = sy
+        sx,sy,sz = sx
 
     retVal = ''
     if sx < ex : retVal = 'SW'
     elif sx > ex : retVal = 'NE'
     elif sy < ey : retVal = 'SE'
-    elif sy > ey : retVal = 'SW'
+    elif sy > ey : retVal = 'NW'
 
     # Up/Down
     if sz > ez : retVal += 'D'
     elif sz < ez : retVal += 'U'
+
+    return retVal
 
 class Actor(pygame.sprite.Sprite, Block) :
     '''All actors should extend this class.
@@ -65,10 +68,10 @@ class Actor(pygame.sprite.Sprite, Block) :
         # Store this, we may need it
         self._fps = fps
 
-        # Our sprite offsets. Used for rendering non 47x47 sprites, or moving any
-        # sprite on the screen.
-        self.x_offset = 7
-        self.y_offset = -13
+        # Try to divine our offsets, probably gets overwritten
+        self.x_offset, self.y_offset = self._images[0].get_size()
+        self.x_offset = 0-((self.x_offset - 47)/2)
+        self.y_offset = 0-(self.y_offset - 30)
 
         # Track the time we started, and the time between updates.
         # Then we can figure out when we have to switch the image.
@@ -80,18 +83,84 @@ class Actor(pygame.sprite.Sprite, Block) :
         # Defining a default location on screen for our sprite
         self.location = (0,0)
 
+        # Actors should do this
+        self.solid = True
+        self.supporter = False
+
+        # Per turn actions left
+        self.moveActionRemaining = True
+        self.standardActionRemaining = True
+        self.minorActionRemaining = True
+
+        # Set default values for all our stats :
+        self.AC = 0
+        self.Will = 0
+        self.Fortitude = 0
+        self.Reflex = 0
+
+        self.HP = 1
+        self.maxHP = 1
+
     def meleeAttack(self, direction, gameGrid) :
+        print 'hearah'
         if self._acting == True : return
         else : self._acting = True
+
+        print directionToCoord(direction, self.gridLocation)
+        # Let's try ot acquire our target
+        l = gameGrid.getBlock(directionToCoord(direction, self.gridLocation))
+
+        target = None
+        for candidate in l :
+            print candidate
+            if isinstance(candidate, Actor) :
+                target = candidate
+        if not target :
+            print 'No target at indicated location'
+            self._acting = False
+            return
+
+        # Target is identified, let's roll!
+        # /rimshot
+        hit = random.randint(1,20)
+        # Add our modifiers here...
+
+        dam = self.meleeWeapon.roll()
+        # Add our DAM modifiers here...
+        
+        # And now deal it to our target, throw gameGrid in there because
+        # I designed myself into a corner of retardation
+        target.dealDamage(hit, 'AC', dam, gameGrid)
 
         self._facing = direction[:2]
         self._actingFrames = 4
 
         self.setGraphicState('attacking-%s' % self._facing)
 
+    def dealDamage(self, hit, save, damage, gameGrid) :
+        if save == 'AC' : defense = self.AC
+        elif save == 'Will' : defense = self.Will
+        elif save == 'Fortitude' : defense = self.Fortitude
+        elif save == 'Reflex' : defense = self.Reflex
+        else : raise Exception('Say what?')
+
+        if defense > hit :
+            # Attack missed, in the future do something cool
+            return
+        
+        self.HP -= damage
+        gameGrid.setBlock(self.gridLocation[0], self.gridLocation[1], self.gridLocation[2], DamageIndicator(damage, self.gridLocation, gameGrid), ow=False)
+
+        if self.HP < 0 :
+            # Dead! Hah!
+            self.die(gameGrid)
+
+    def die(self, gameGrid) :
+        gameGrid.removeBlock(self, self.gridLocation)
+
     def walkChain(self, chain, gameGrid) :
         self._walkingChain = chain[1:]
-        self._gameGrid = gameGrid
+        gameGrid = gameGrid
         self.walk(chain[0], gameGrid)
 
     def walkNext(self, gameGrid) :
@@ -110,7 +179,6 @@ class Actor(pygame.sprite.Sprite, Block) :
 
         # Direction is going to look like "NWU" so just take the first two chars
         self._facing = direction[:2]
-        print self._facing
 
         self._acting = True
         self._walkingFrames = self._fps
@@ -181,7 +249,7 @@ class Actor(pygame.sprite.Sprite, Block) :
                     self.y_offset -= self._yChange * self._fps
 
                     self._gameGrid.setBlock(self._newLoc[0], self._newLoc[1], self._newLoc[2], self, ow=False, insPos=0)
-                    self._gameGrid.removeBlock(self.gridLocation[0], self.gridLocation[1], self.gridLocation[2], self)
+                    self._gameGrid.removeBlock(self, self.gridLocation)
                     self.gridLocation = tuple(self._newLoc)
 
                     # Set graphic state back to standing
@@ -200,7 +268,11 @@ class Actor(pygame.sprite.Sprite, Block) :
                     self.setGraphicState('standing-%s' % self._facing)
                     self._acting = False
 
-            # End walking code, start normal animation code
+                    # Call our callback if it exists
+                    try : self._cb()
+                    except AttributeError : pass
+
+            # End walking/acting code, start normal animation code
             self._frame += 1
 
             # Animation finished, cycling to beginning of sequence
@@ -215,6 +287,11 @@ class Actor(pygame.sprite.Sprite, Block) :
     def setGraphicState(self, newState) :
         self._images = self._graphicDict[newState]
 
+        # Try to divine our offsets, probably gets overwritten
+        self.x_offset, self.y_offset = self._images[0].get_size()
+        self.x_offset = 0-((self.x_offset - 47)/2)
+        self.y_offset = 0-(self.y_offset - 30)
+
         # Force an update, even if it woudn't be due yet
         self._last_update -= self._delay
 
@@ -224,9 +301,11 @@ class Actor(pygame.sprite.Sprite, Block) :
     def setGridLoc(self, gx, gy, gz) :
         self.gridLocation = (gx, gy, gz)
         
-    def render(self, screen) :
-        self.update(pygame.time.jet_ticks())
-        screen.blit(self.image, self.location)
+    def getPortrait(self) :
+      try : return self._graphicDict['portrait']
+      except KeyError :
+        self._graphicDict['portriat'] = pygame.image.load('assets/actors/default/portrait.png').convert_alpha()
+        return self._graphicDict['portriat']
 
     def isActing(self) :
         return self._acting
@@ -235,6 +314,7 @@ class Actor(pygame.sprite.Sprite, Block) :
         return self.image
 
 class actorTest(Actor) :
+    name = 'Actor Test'
     def __init__(self) :
         gDict = {'walking-SW' : load_sliced_sprites(32, 58, 'assets/actors/test_sprite/walk_cycle_front.png'),
                  'walking-SE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(32, 58, 'assets/actors/test_sprite/walk_cycle_front.png')],
@@ -247,7 +327,8 @@ class actorTest(Actor) :
                  'attacking-SW' : load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_front.png'),
                  'attacking-SE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_front.png')],
                  'attacking-NW' : load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_back.png'),
-                 'attacking-NE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_back.png')]
+                 'attacking-NE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(39, 57, 'assets/actors/test_sprite/attack_back.png')],
+                 'portrait' : pygame.image.load('assets/actors/test_sprite/portrait.png')
                 }
 
         Actor.__init__(self,
@@ -255,5 +336,45 @@ class actorTest(Actor) :
                        state = 'standing-SW',
                        fps = 10)
 
+        self.meleeWeapon = weapons.RustyButterKnife()
+
         self.x_offset = 7
         self.y_offset = -29
+
+class testHound(Actor) :
+    name = 'Test Hound'
+    def __init__(self) :
+        gDict = {'walking-SW' : load_sliced_sprites(48, 39, 'assets/actors/hound/walk_cycle-front.png'),
+                 'walking-SE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(48, 39, 'assets/actors/hound/walk_cycle-front.png')],
+                 'walking-NW' : load_sliced_sprites(48, 39, 'assets/actors/hound/walk_cycle_back.png'),
+                 'walking-NE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(48, 39, 'assets/actors/hound/walk_cycle_back.png')], 
+                 'standing-SW' : [pygame.image.load('assets/actors/hound/standing-front.png')],
+                 'standing-SE' : [pygame.transform.flip(pygame.image.load('assets/actors/hound/standing-front.png'), True, False)] ,
+                 'standing-NW' : [pygame.image.load('assets/actors/hound/standing-back.png')],
+                 'standing-NE' : [pygame.transform.flip(pygame.image.load('assets/actors/hound/standing-back.png'), True, False)],
+                 'attacking-SW' : load_sliced_sprites(48, 41, 'assets/actors/hound/attack_front.png'),
+                 'attacking-SE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(48, 41, 'assets/actors/hound/attack_front.png')],
+                 'attacking-NW' : load_sliced_sprites(48, 41, 'assets/actors/hound/attack_back.png'),
+                 'attacking-NE' : [pygame.transform.flip(i, True, False) for i in load_sliced_sprites(48, 41, 'assets/actors/hound/attack_back.png')],
+                 'portrait' : pygame.image.load('assets/actors/hound/portrait.png')
+                }
+
+        Actor.__init__(self,
+                       gDict,
+                       state = 'standing-SW',
+                       fps = 9)
+
+        self.maxHP = 10
+        self.HP = 10
+        self.AC = 10
+
+        self.meleeWeapon = weapons.HoundClaws()
+
+class breakablePlant(Actor) :
+    name = 'Tree'
+    def __init__(self) :
+        gDict = {'foo' : [pygame.image.load('assets/blocks/tree_1.png')]}
+        Actor.__init__(self,
+                       gDict,
+                       state = 'foo',
+                       fps = 1)
